@@ -11,6 +11,12 @@ use std::io::{Write, Read, Error};
 use std::collections::HashMap;
 use std::fs::{OpenOptions, File};
 use std::path::{PathBuf, Path};
+// resto do módulo:
+mod gerenciamento_bd;
+mod organizacao_bd;
+mod deletador;
+pub use gerenciamento_bd::*;
+pub use organizacao_bd::*;
 
 /// caminho e nome do BD:
 const DIR:&'static str = concat!(
