@@ -4,10 +4,10 @@ use std::env::args;
 // minha biblioteca:
 mod motor; 
 mod banco_de_dados;
-mod gerenciamento_bd;
 mod menu;
-mod deletador;
-mod organizacao_bd;
+//mod gerenciamento_bd;
+//mod deletador;
+//mod organizacao_bd;
 
 // define-se com quase mil número primos a buscar.
 const A_BUSCAR:u64 = 932;
