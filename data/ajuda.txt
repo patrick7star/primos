@@ -1,0 +1,32 @@
+
+--- --- PROGRAMA --- ---
+
+   primos [opções] [<argumentos>]
+
+
+--- --- SINOPSE --- ---
+
+   faz verreduras por números primos e armazena
+   dados de tal. É possível monitor e visualizar
+   informações de varreduras passadas. As varreduras
+   também podem ser personalizadas.
+
+
+--- --- OPÇÕES --- ---
+
+   ajuda - mostra esta mensagem.
+
+   procura - procura por uma quantia determinada de 
+             números primos.
+
+   info - informação geral do banco de dados sobre
+          todas varreduras realizadas.
+
+   tempo [T] - procura primos, porém dado um tempo
+               e não uma quantia "exata" a encontrar.
+
+   quantia [N] - procura primos até que ache um
+                 número N deles.
+
+   backup - faz uma copia de todos dados do antigo
+            banco de dados para o novo.

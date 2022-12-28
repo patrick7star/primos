@@ -1,0 +1,8 @@
+[package]
+name = "primos"
+version = "1.0.7"
+edition = "2018"
+
+
+[dependencies]
+utilitarios = { path = "./utilitarios" }
