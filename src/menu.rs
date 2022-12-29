@@ -35,7 +35,6 @@ use std::env::args;
 
 // meus módulos:
 use super::banco_de_dados::*;
-use super::gerenciamento_bd;
 #[doc(inline)]
 use super::motor::{
    busca_continua, 
@@ -122,7 +121,7 @@ pub fn menu(argumento:Argumentos, pula_confirmacao:bool) {
       Argumentos::Backup => {
          println!("copiando dados do banco de dados de texto para o binário.");
          // antes de começar faz a cópia do antigo.
-         gerenciamento_bd::realiza_backup_bd(); 
+         realiza_backup_bd(); 
       },
 
       Argumentos::Privado(tipo) => {
