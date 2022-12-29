@@ -228,8 +228,8 @@ fn carrega_backup(caminho: &Path) -> Backup {
    return Ok((ui, bd));
 }
 
-#[allow(unused_imports)]
 // uso para testes:
+#[allow(unused_imports)]
 use super::deletador::DeletorPaciente;
 
 #[cfg(test)]

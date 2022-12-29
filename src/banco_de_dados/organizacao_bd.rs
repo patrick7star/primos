@@ -6,11 +6,15 @@
  * o selo do sistema, e colocar um número 
  * romano no local. */
 
-use std::fs::{read_dir, DirEntry, ReadDir};
+use std::fs::{DirEntry, ReadDir};
 use std::time::Duration;
 use utilitarios::romanos::decimal_para_romano;
 
+// facilita codificação:
+type Entradas = Vec<DirEntry>;
 
+/* extrai a duração da "entrada do diretório"
+ * dada, referente a sua data de criação. */
 fn decorrido(entrada: &DirEntry) -> Duration {
    let mt = entrada.metadata().unwrap();
    return {
@@ -20,13 +24,19 @@ fn decorrido(entrada: &DirEntry) -> Duration {
    };
 }
 
+/* tamanho da entrada, se for um arquivo. */
+fn size(e: &DirEntry) -> u64 
+   { e.metadata().unwrap().len() }
+
+
+enum Ordenacao { Tamanho, Tempo }
 /* ordena lista de acordo com a data 
  * de criação. Em ordem crescente, ou seja,
  * os mais recentes ficam na esquerda da 
  * array. */
-fn ordena(lista: ReadDir) -> Vec<DirEntry> {
-   let mut array: Vec<DirEntry> = Vec::new();
-   
+fn ordena(lista: ReadDir, tipo: Ordenacao) -> Entradas {
+   let mut array = Entradas::new();
+
    // inserindo já ordenando(insert-sort).
    for entrada in lista {
       let e = entrada.unwrap();
@@ -35,13 +45,22 @@ fn ordena(lista: ReadDir) -> Vec<DirEntry> {
       if array.len() == 0
          { array.push(e); continue; }
       let t1 = decorrido(&e);
+      let s1 = size(&e);
       let mut indice = 0;
       for (i, x) in array.iter().enumerate() {
          let t2 = decorrido(&x);
+         let s2 = size(&x);
          // atualiza o índice atual.
          indice = i;
-         if t1 < t2
-            { break; }
+         match tipo {
+            Ordenacao::Tempo => {
+               if t1 < t2
+                  { break; }
+            } Ordenacao::Tamanho => {
+               if s1 < s2
+                  { break; }
+            }
+         };
       }
       // adiciona no índice parado.
       array.insert(indice, e);
@@ -49,18 +68,26 @@ fn ordena(lista: ReadDir) -> Vec<DirEntry> {
    return array;
 }
 
+// extrai nome da entrada que foi referênciada.
 fn nome(entrada: &DirEntry) -> String { 
-   let caminho = entrada.path();
-   caminho.as_path()
+   entrada.path()
+   .as_path()
    .file_name().unwrap()
-   .to_str().unwrap() 
-   .to_string()
+   .to_str().unwrap()
+   .to_string() 
 }
 
-pub fn renomea(mut lista_ordenada: Vec<DirEntry>) {
+/* renomea 'Entradas' dadas para um novo
+ * formato de identificação, que leva em
+ * conta a contagem romana. Aceita basicamente
+ * a ordem na 'array', então, não segue 
+ * critério de "tempo de criação" ou "tamanho"
+ * tal ordenação, apenas segue a ordem da array. */
+pub fn renomea(mut lista_ordenada: Entradas) {
    let mut tamanho = lista_ordenada.len();
    for entrada in lista_ordenada.drain(0..) {
-      let numero_romano = decimal_para_romano(tamanho as u16);
+      let t = tamanho as u16;
+      let numero_romano = decimal_para_romano(t);
       let antigo = nome(&entrada);
       let novo_nome = format!("backup.{}.zip", numero_romano);
       println!(
@@ -77,6 +104,7 @@ pub fn renomea(mut lista_ordenada: Vec<DirEntry>) {
 #[allow(non_snake_case)]
 mod tests {
    use super::*;
+   use std::fs::read_dir;
    use utilitarios::legivel::{tamanho, tempo as Tempo};
 
    /* tempo total desde sua criação. */
@@ -89,20 +117,17 @@ mod tests {
       };
    }
 
-   /* tamanho em bytes do arquivo. */
-   fn size(entrada: &DirEntry) -> u64 
-      { entrada.metadata().unwrap().len() }
 
    #[test]
    fn visualizaListagem() {
       let caminho = "data/backups";
       let entradas = read_dir(caminho).unwrap();
-      let lista = ordena(entradas);
+      let lista = ordena(entradas, Ordenacao::Tamanho);
 
       for (i, e) in lista.iter().enumerate() {
          println!(
-            "{0:>3.0} ==> '{2}' ({1}/{3})",
-            i, tamanho(size(e) as u64, true), 
+            "{0:>3.0}º ==> '{2}' ({1}/{3})",
+            i+1, tamanho(size(e) as u64, true), 
             nome(e), Tempo(tempo(e), true)
          );
       }
@@ -113,7 +138,7 @@ mod tests {
    fn prototipoDeRenomeacao() {
       let caminho = "data/backups";
       let entradas = read_dir(caminho).unwrap();
-      let lista = ordena(entradas);
+      let lista = ordena(entradas, Ordenacao::Tempo);
       renomea(lista); 
    }
 }
