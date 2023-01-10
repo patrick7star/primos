@@ -8,10 +8,7 @@
 use std::path::{PathBuf, Path};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
-use std::fs::{
-   File, remove_file, 
-   create_dir 
-};
+use std::fs::{File, create_dir};
 use std::io::Read;
 use std::process::Command;
 use std::env::temp_dir;
@@ -36,17 +33,6 @@ type Str = &'static str;
 // backup completo.
 type Backup = Result<(u32, BD), Str>;
 
-
-/// limpa o BD, sem adicionar qualquer novo dado.
-pub fn _zerando_bd() {
-   // excluí o atual arquivo represetante do BD.
-   remove_file(Path::new(CAMINHO_BD)).unwrap();
-   // recria o arquivo, porém vázio.
-   let comando = format!("touch {}", CAMINHO_BD);
-   Command::new(comando.as_str()).spawn().unwrap();
-   let comando = format!("touch {}", CAMINHO_UI);
-   Command::new(comando.as_str()).spawn().unwrap();
-}
 
 // computa um 'nome+ID' para dá ao archive criado.
 fn cria_nome_id() -> PathBuf {
