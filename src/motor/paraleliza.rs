@@ -7,12 +7,12 @@
  */
 
 // biblioteca do Rust:
-use std::process::Command;
-use std::env::Args;
+use std::process::{Stdio, Command};
+//use std::env::Args;
 use std::str::FromStr;
 use std::mem::swap;
 // resto do módulo:
-use super::turbina::{Intervalo, simultaneadade};
+use super::turbina::Intervalo;
 
 
 pub fn string_para_range(s: String) -> Intervalo {
@@ -38,7 +38,8 @@ pub fn string_para_range(s: String) -> Intervalo {
  * um intervalo, onde será feito à 
  * busca pela quantia de primos.
  */
-pub fn filtra_intervalo(i: Args) -> Intervalo {
+use std::iter::Iterator as I;
+pub fn filtra_intervalo(i: impl I<Item=String>) -> Intervalo {
    // retira apenas intervalo.
    let intervalo = {
       i.filter(|s| { 
@@ -53,27 +54,41 @@ pub fn filtra_intervalo(i: Args) -> Intervalo {
    return string_para_range(intervalo);
 }
 
+use std::process::Child;
+use std::io::Error;
+use std::path::Path;
+type Processo = Result<Child, Error>;
 /* gera vários processos que processas
  * vários intervalos dados. Gera vários
  * forks chamando esta função quantas 
  * vezes achar que for necessário. */
-pub fn gera_processo(i: Intervalo) {
-   // converte itervalo para string.
-   let intervalo_str= format!("{}..={}",*i.start(), *i.end());
+pub fn gera_processo(i: Intervalo) -> Processo {
+   // binários otimizados, e o debug se não houver.
+   let binario_otimizado = Path::new("target/release/primos");
+   let binario_debug = Path::new("target/debug/primos");
    // formando ...
-   let mut cmd = Command::new("cargo run");
+   let mut cmd = {
+      let cmd_str: &str;
+      if binario_otimizado.exists() { 
+         cmd_str = {
+            binario_otimizado
+            .to_str().unwrap()
+         };
+      } else {
+         cmd_str = {
+            binario_debug
+            .to_str().unwrap()
+         };
+      }
+      Command::new(cmd_str)
+   };
    cmd.arg("varre");
-   cmd.arg(intervalo_str);
+   /* Converte itervalo para string.
+    * Adiciona o argumento em sequência. */
+   cmd.arg(format!("{}..={}",*i.start(), *i.end()));
+   cmd.stdout(Stdio::piped());
    // execuntando ...
-   cmd.spawn().unwrap();
-}
-
-/* faz uma varredura dado o intervalo. Quando
- * chamado um novo processo, em modo exclusivo
- * para funções internas, chama esta função.*/
-pub fn varredura(i: Intervalo) {
-   let _dados = simultaneadade(i, 10);
-   //despeja(dados).unwrap();
+   Ok(cmd.spawn()?)
 }
 
 
