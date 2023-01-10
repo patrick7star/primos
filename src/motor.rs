@@ -11,20 +11,26 @@ use std::time::Duration;
 
 // biblioteca externa:
 extern crate utilitarios;
-use utilitarios::barra_de_progresso::{ProgressoTemporal, ProgressoPercentual};
-// outros módulos do caixote:
-//use super::ferramentas::{Cronometro, Temporizador};
+use utilitarios::barra_de_progresso::{
+   ProgressoTemporal, 
+   ProgressoPercentual
+};
 
 // extensão do módulo:
 mod turbina;
 mod paraleliza;
-//mod sistema_de_arquivos;
 mod primos_identificador;
 mod temporizador;
 // re-exportando ...
-pub use turbina::*;
-//pub use sistema_de_arquivos::*;
-pub use paraleliza::*;
+pub use turbina::{
+   simultaneadade, 
+   divide_intervalo,
+   Primos
+};
+pub use paraleliza::{
+   filtra_intervalo, 
+   gera_processo
+};
 pub use primos_identificador::e_primoI;
 pub use temporizador::*;
 

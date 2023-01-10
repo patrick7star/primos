@@ -21,7 +21,7 @@
 // biblioteca externa:
 extern crate utilitarios;
 use utilitarios::{
-   tabela_visualizacao::{ Coluna, Tabela},
+   tabela_visualizacao::{Coluna, Tabela},
    lanca_prompt,
    legivel::tempo
 };
@@ -30,7 +30,7 @@ use utilitarios::{
 use std::fs::read_to_string;
 use std::time::Duration;
 //use std::fmt::Error;
-use std::process::Command;
+use std::process::{Child, Command};
 use std::env::args;
 
 // meus módulos:
@@ -43,14 +43,16 @@ use super::motor::{
    filtra_intervalo,
    divide_intervalo,
    gera_processo,
-   varredura, 
-   simultaneadade
+   simultaneadade,
+   Primos
 };
 use super::{Dados, A_BUSCAR};
 use crate::computa_caminho;
 // extensão do módulo.
 mod tipo;
 pub use tipo::{Argumentos, Funcao, transforma};
+mod stream_serializado;
+pub use stream_serializado::{despeja_bytes, colhe_resultado};
 
 /**
  menu para gerenciar os argumentos passados 
@@ -58,6 +60,10 @@ pub use tipo::{Argumentos, Funcao, transforma};
  certas na execução. 
 */
 pub fn menu(argumento:Argumentos, pula_confirmacao:bool) {
+   const QTD_THREADS: usize = 10;
+   // total de forks à "chocar".
+   const QTD_SP: usize = 4;
+   let argumentos = args().skip(1);
    // baseado no tipo de argumento obtido...
    match argumento {
       // informação de ajuda:
@@ -65,24 +71,19 @@ pub fn menu(argumento:Argumentos, pula_confirmacao:bool) {
          let caminho = dbg!(computa_caminho("data/ajuda.txt"));
          let conteudo = read_to_string(caminho);
          println!("{}", conteudo.unwrap()); 
-      }
-
-      // mostra informações gerais do programa.
-      Argumentos::Infomarcao => 
+      } Argumentos::Infomarcao => 
+         // mostra informações gerais do programa.
          { info_bd_binario(); },
-
-      // varre por uma quantia de primos.
       Argumentos::Procura => {
+         // varre por uma quantia de primos.
          // obtem-se o número onde parou a última varredura.
          let ultimo = ultimo_numero_computado().unwrap();
          // busca a quantidade e obtem-se eles e seus metadados produzidos.
          let dados = busca_continua(ultimo, A_BUSCAR);
          // guarda tais dados no banco de dados.
          salvar_varredura(dados, salva_no_bd);
-      },
-      
-      // varre por primos dado um determinado tempo.
-      Argumentos::ProcuraTempo(t) => { 
+      } Argumentos::ProcuraTempo(t) => { 
+         // varre por primos dado um determinado tempo.
          let t: u64 = t as u64;
          println!("seu tempo demandado: {}", tempo(t, false));
          // carrega de onde parou:
@@ -101,9 +102,7 @@ pub fn menu(argumento:Argumentos, pula_confirmacao:bool) {
          }
          else 
             { salvar_varredura(dados, salva_no_bd); }
-      },
-      
-      Argumentos::ProcuraQtd(q) => {
+      } Argumentos::ProcuraQtd(q) => {
          println!("sua quantia demandada: {} primos",q);
          // último número verificado.
          let unv = ultimo_numero_computado().unwrap();
@@ -116,25 +115,44 @@ pub fn menu(argumento:Argumentos, pula_confirmacao:bool) {
          }
          else 
             { salvar_varredura(dados, salva_no_bd); }
-      },
-
-      Argumentos::Backup => {
-         println!("copiando dados do banco de dados de texto para o binário.");
+      } Argumentos::Backup => {
+         println!(
+            concat!(
+               "copiando dados do banco de dados de",
+               "texto para o binário."
+            )
+         );
          // antes de começar faz a cópia do antigo.
          realiza_backup_bd(); 
-      },
-
-      Argumentos::Privado(tipo) => {
+      } Argumentos::Privado(tipo) => {
          match tipo {
             Funcao::Chamada => {
-               const QTD: usize = 4;
-               let a = filtra_intervalo(args());
-               let mut geral = divide_intervalo(a, QTD);
-               for i in geral.drain(..) 
-                  { gera_processo(i); }
+               let a = filtra_intervalo(argumentos);
+               let mut geral = divide_intervalo(a, QTD_SP);
+               let mut forques: Vec<Child>;
+               forques = Vec::with_capacity(16);
+               for (o, i) in geral.drain(..).enumerate() {
+                  println!("{}º. {:#?}", (o+1), i);
+                  let processo = gera_processo(i).unwrap(); 
+                  forques.push(processo); 
+               }
+               let mut resultados = Primos::with_capacity(30_000);
+               for sp in forques.iter_mut() { 
+                  let r = colhe_resultado(sp);
+                  resultados.extend(r); 
+               }
+               println!(
+                  "primos encontrados: {}", 
+                  resultados.len()
+               );
             } Funcao::Processo => {
-               let i = filtra_intervalo(args());
-               let dados = simultaneadade(i, 10);
+               let i = filtra_intervalo(argumentos);
+               let dados = simultaneadade(i, QTD_THREADS);
+               /* como trecho é geralmente chamado
+                * via fork, então todo conteúdo em
+                * bytes é despejado via saída padrão.
+                */
+               despeja_bytes(dados);
             }
          };
       }
@@ -236,3 +254,4 @@ fn envia_notificao(dados:&Dados) {
    .spawn()
    .unwrap();
 }
+
