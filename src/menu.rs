@@ -221,6 +221,9 @@ fn envia_notificao(dados:&Dados) {
    .unwrap();
 }
 
+use crate::banco_de_dados::deleta_caminho;
+use std::str::FromStr;
+use std::path::Path;
 /* trazendo para cá, já que, um aninhamento
  * naquele nível fica muito confuso para
  * se mexer. Aqui cuida de chamadas privadas,
@@ -238,7 +241,7 @@ fn forques_demanados(tipo: Funcao) {
    // total de forks à "chocar".
    const QTD_SP: usize = 4;
    // pulando nome do programa...
-   let argumentos = args().skip(1);
+   let mut argumentos = args().skip(1);
 
    match tipo {
       Funcao::Chamada => {
@@ -272,6 +275,18 @@ fn forques_demanados(tipo: Funcao) {
          let t = ByteOrdem::LittleEndian;
          let _t = ByteOrdem::BigEndian;
          inverte_dados_ultima_insercao(t);
+      } Funcao::Deleta => {
+         // descarta.
+         std::mem::drop(argumentos.next());
+         // caminho a deletar.
+         let caminho = argumentos.next().unwrap();
+         let caminho = Path::new(caminho.as_str());
+         // tempo até que a ação seja feita.
+         let tempo = argumentos.next().unwrap();
+         let tempo = u64::from_str(tempo.as_str()).unwrap();
+         let tempo = Duration::from_secs(tempo);
+         // deletando diretório...
+         deleta_caminho(caminho.to_path_buf(), tempo);
       }
    };
 }

@@ -23,6 +23,7 @@ pub use ultima_insercao::{ultima_insercao_feita};
 // usada apenas aqui, à acima exporta.
 use ultima_insercao::{atualiza_indice_de_insercao};
 pub use grande_inversao::*;
+pub use deletador::*;
 
 /// caminho e nome do BD:
 const DIR:&'static str = concat!(
