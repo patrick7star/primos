@@ -11,7 +11,7 @@ use std::fmt::Error;
 //use std::ops::RangeInclusive;
 
 #[derive(Debug)]
-pub enum Funcao { Chamada, Processo, Inversao }
+pub enum Funcao { Chamada, Processo, Inversao, Deleta }
 
 // argumentos comuns ao executar o programa.
 #[derive(Debug)]
@@ -133,25 +133,23 @@ pub fn transforma(argumentos:&Vec<String>) -> Argumentos {
       // para melhorar legibilidade.
       let opcao = argumentos[1].clone();
       // um argumento em terminal(apenas opção).
-      if argumentos[1] == "info" {
-         return Argumentos::Infomarcao;
-      }
-      else if argumentos[1] == "procura" {
-         return Argumentos::Procura;
-      }
-      else if argumentos[1] == "ajuda" {
-         return Argumentos::Ajuda;
-      }
-      else if opcao == "inverte-última-inserção" {
-         return Argumentos::Privado(Funcao::Inversao);
-      }
+      if argumentos[1] == "info" 
+         { return Argumentos::Infomarcao; }
+      else if argumentos[1] == "procura" 
+         { return Argumentos::Procura; }
+      else if argumentos[1] == "ajuda" 
+         { return Argumentos::Ajuda; }
+      // opções privadas, inacessíveis ao usuário.
+      else if opcao == "inverte-última-inserção" 
+         { return Argumentos::Privado(Funcao::Inversao); }
+      // continuação das opções "públicas".
       else if argumentos[1] == "backup"
          { return Argumentos::Backup; }
       else { return Argumentos::Ajuda; }
    } else if total == 3 {
       // para melhorar legibilidade.
-      let opcao = argumentos[1].clone();
-      let arg = argumentos[2].clone();
+      let opcao = &argumentos[1];
+      let arg = &argumentos[2];
       // proposições:
       let texto_de_tempo = argumento_valido(arg.as_str());
       let valor_numerico = apenas_numerica(arg.as_str());
@@ -168,7 +166,13 @@ pub fn transforma(argumentos:&Vec<String>) -> Argumentos {
          return Argumentos::Privado(Funcao::Processo);
       } else 
          { return Argumentos::Ajuda; }
-   } else { 
+   } else if total == 4 {
+      let opcao = &argumentos[1];
+      if opcao == "função-deleta-caminho" {
+         return Argumentos::Privado(Funcao::Deleta); 
+      } else 
+         { return Argumentos::Ajuda; }
+   }else { 
       // três ou mais argumentos, ainda não implementado...
       println!("só um argumento permitido por vez!");
       return Argumentos::Ajuda;
