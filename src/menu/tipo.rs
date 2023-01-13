@@ -11,7 +11,7 @@ use std::fmt::Error;
 //use std::ops::RangeInclusive;
 
 #[derive(Debug)]
-pub enum Funcao { Chamada, Processo }
+pub enum Funcao { Chamada, Processo, Inversao }
 
 // argumentos comuns ao executar o programa.
 #[derive(Debug)]
@@ -130,6 +130,8 @@ pub fn transforma(argumentos:&Vec<String>) -> Argumentos {
    if total == 1 {
       return Argumentos::Ajuda;
    } else if total == 2 {
+      // para melhorar legibilidade.
+      let opcao = argumentos[1].clone();
       // um argumento em terminal(apenas opção).
       if argumentos[1] == "info" {
          return Argumentos::Infomarcao;
@@ -139,6 +141,9 @@ pub fn transforma(argumentos:&Vec<String>) -> Argumentos {
       }
       else if argumentos[1] == "ajuda" {
          return Argumentos::Ajuda;
+      }
+      else if opcao == "inverte-última-inserção" {
+         return Argumentos::Privado(Funcao::Inversao);
       }
       else if argumentos[1] == "backup"
          { return Argumentos::Backup; }
