@@ -1,31 +1,25 @@
 
 use std::process::Command;
 use std::time::Duration;
-use std::path::{PathBuf, Path};
+use std::path::{PathBuf};
 use std::ops::{Drop, AddAssign};
 use std::thread::sleep;
 
 // caminho do executável.
-const DIR: &'static str = "target/release/deps";
-const NOME_EXE: &'static str = "fork_remocao";
+//const DIR: &'static str = "target/release/deps";
+const NOME_EXE: &'static str = "target/debug/primos";
 // tempo de delay da exclusão dos diretórios/arquivos.
-const DELAY: f32 = 3.5;
-const CODIGO_FONTE: &'static str = concat!(
-   "src/banco_de_dados/",
-   "fork_remocao.rs"
-);
+const DELAY: f32 = 0.839;
 
 
 pub struct DeletorPaciente {
    lista: Vec<PathBuf>,
    tempo_de_espera: Duration,
-   //cronometro: Option<Instant>
 }
 
 impl DeletorPaciente {
    pub fn novo(tempo: Duration) -> Self {
       Self { 
-         //cronometro: None,
          tempo_de_espera: tempo,
          lista: Vec::new()
       }
@@ -33,35 +27,32 @@ impl DeletorPaciente {
 }
 
 impl Drop for DeletorPaciente {
+   /* só choca o processo de exclusão quando
+    * o objeto for liberado.
+    */
    fn drop(&mut self) {
       let total = self.lista.len();
 
+      print!("começando processos para exclusão...");
       for caminho in self.lista.drain(..) {
-         // compila se necessário ...
-         compila_fork();
-
-         // cria fork convocando o comando.
-         let tde = self.tempo_de_espera;
-         // extraí caminho como string.
-         let path = {
+         let caminho_str = {
             caminho.as_path()
             .to_str().unwrap()
          };
-         /* forma comando como string.
-          * remoção em sí: */
-         let cmd_str = format!("{}/{}", DIR, NOME_EXE);
-         let mut comando = Command::new(cmd_str);
-         comando.arg(path);
-         comando.arg(tde.as_secs().to_string());
+         let tempo_str = {
+            self.tempo_de_espera
+            .as_secs().to_string()
+         };
+         let mut comando = Command::new(NOME_EXE);
+         comando.arg("função-deleta-caminho");
+         comando.arg(caminho_str);
+         comando.arg(tempo_str.as_str());
          comando.spawn().unwrap();
-
          // espaça as deletações em um segundo e meio.
          sleep(Duration::from_secs_f32(DELAY));
       }
-      println!(
-         "todos os {} diretórios foram colocadas
-         \rem processo de exclusão.", total
-      );
+
+      println!("todos os {} diretórios na fila de exclusão", total);
    }
 }
 
@@ -71,28 +62,48 @@ impl AddAssign<PathBuf> for DeletorPaciente {
 }
 
          
-/* realiza uma compilação do executável
- * que quando forqueado excluí tais
- * diretórios.
- */
-fn compila_fork() {
-   // só faz se não existir um compilado.
-   let executavel = Path::new(DIR).join(NOME_EXE);
-   if executavel.exists() {
-      println!("compilado já existe!");
-      return ();
-   } else {
-      let mut comando = Command::new("rustc");
-      // argumentos: onde compilar e que código.
-      comando.arg("--out-dir");
-      comando.arg(DIR);
-      comando.arg(CODIGO_FONTE);
-      // execuntando ...
-      comando.status().unwrap();
-      println!(
-         "'{}' compilado em '{}' com sucesso.", 
-         NOME_EXE, DIR
-      );
-   }
+use std::fs::remove_dir_all;
+/* remove o arquivo demanda. */
+pub fn deleta_caminho(caminho: PathBuf, tempo: Duration) {
+   // pausa antes de começar.
+   sleep(tempo);
+
+   // deleta diretório ou arquivo.
+   match remove_dir_all(caminho.clone()) {
+      Ok(_) => 
+         { println!("removendo '{:#?}' ... feito!", caminho); }
+      Err(_) =>
+         { println!("erro ao remover '{:#?}'", caminho); }
+   };
 }
 
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod tests {
+   // bibliotecas para teste.
+   use super::*;
+   use std::path::Path;
+   use std::time::{Duration, Instant};
+
+
+   #[test]
+   #[ignore="precisa de uma 'pasta-copia' no desktop"]
+   fn DeletaCaminho() {
+      let caminho_str = concat!(
+         env!("HOME"),
+         "/Desktop",
+         "/pasta-copia"
+      );
+      let caminho = Path::new(caminho_str);
+      let cronometro = Instant::now();
+      assert!(caminho.exists());
+      deleta_caminho(
+         caminho.to_path_buf(), 
+         Duration::from_secs(10)
+      );
+      assert!(!caminho.exists());
+      assert!(cronometro.elapsed() < Duration::from_secs(13));
+      println!("{:#?}", cronometro.elapsed());
+   }
+}
