@@ -176,7 +176,7 @@ fn ultima_insercao_feita(mut arquivo:File) -> Option<u32> {
    // lendo os únicos 4 bytes dentro do arquivo.
    match arquivo.read_exact(&mut bytes) {
       Ok(_) => {
-         let valor = u32::from_be_bytes(bytes);
+         let valor = u32::from_le_bytes(bytes);
          Some(valor)
       } Err(_) => None
    }
