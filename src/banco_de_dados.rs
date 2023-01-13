@@ -10,12 +10,19 @@
 use std::io::{Write, Read, Error};
 use std::collections::HashMap;
 use std::fs::{OpenOptions, File};
-use std::path::{PathBuf, Path};
+use std::path::{Path};
+
 // resto do módulo:
 mod gerenciamento_bd;
 mod organizacao_bd;
 mod deletador;
+mod grande_inversao;
+mod ultima_insercao;
 pub use gerenciamento_bd::*;
+pub use ultima_insercao::{ultima_insercao_feita};
+// usada apenas aqui, à acima exporta.
+use ultima_insercao::{atualiza_indice_de_insercao};
+pub use grande_inversao::*;
 
 /// caminho e nome do BD:
 const DIR:&'static str = concat!(
@@ -24,15 +31,14 @@ const DIR:&'static str = concat!(
    "/data"
 );
 const NOME_BD:&'static str = "banco_de_dados.dat";
-const REGISTROS_BD:&'static str = "ultima_insercao.dat";
+//const REGISTROS_BD:&'static str = "ultima_insercao.dat";
 
 // apelidos para codificação:
 type BD = HashMap<u32, Busca>;
 type Primos = Vec<u64>;
 type Busca = (Primos, u64, u64, u64);
 /* não se repete com frequência, porém
- * deixa o código bem limpo(legível).
- */
+ * deixa o código bem limpo(legível).  */
 type BancoDeDados = Result<BD, &'static str>;
 
 
@@ -96,7 +102,7 @@ pub fn salva_no_bd(dados:Busca) {
 /// lê todo o conteúdo no banco de dados.
 pub fn carrega_bd() -> BancoDeDados {
    let mut tabela_dados: BD = BD::new();
-   let mut indice:u32 = 1;
+   let mut indice: u32 = 1;
 
    // abrindo o arquivo do banco-de-dados...
    let caminho = Path::new(DIR).join(NOME_BD);
@@ -219,68 +225,6 @@ pub fn deserializa_uma_busca(file:&mut File) -> Option<Busca> {
    Some((primos, unv, ttc, mvr))
 }
 
-/* obtem o índice de inserção, que foi feito 
- * por último no BD. */
-pub fn ultima_insercao_feita() -> Option<u32> {
-   /* tenta abrir o banco de dados, se não houver 
-    * algum, criar e colocar o último índice de
-    * inserção nele. */
-   let mut caminho = PathBuf::new();
-   caminho.push(DIR);
-   caminho.push(REGISTROS_BD);
-   match OpenOptions::new().read(true).open(caminho.as_path()) {
-      Ok(mut file) => {
-         // lendo os únicos 4 bytes dentro do arquivo.
-         let mut bytes = [u8::MAX; 4];
-         file.read_exact(&mut bytes).unwrap();
-         let valor = u32::from_be_bytes(bytes);
-         // fechando BD...
-         drop(file);
-         Some(valor)
-      } Err(_) =>  { 
-         /* se não tem arquivo do BD, então não apenas
-          * criar um como, carregar todo BD, para que
-          * se tenha o índice de inserção. */
-         let todos_dados = carrega_bd().unwrap();
-         let tamanho: u32 = todos_dados.len() as u32;
-         let bytes:[u8; 4] = tamanho.to_be_bytes();
-         // abrindo arquivo para escrita.
-         let mut arquivo_uif = OpenOptions::new();
-         match arquivo_uif.create(true).write(true).open(caminho.as_path()) {
-            Ok(mut arquivo) => 
-               { arquivo.write(&bytes[..]).unwrap() },
-            Err(_) => 
-               { panic!("erro ao escrever dados no arquivo \"última_inserção.dat\""); }
-         };
-         /* como acabou de carregar no BD, ele
-          * retorna "null". */
-         None
-      }
-   }
-}
-
-/* apenas faz isso se houver trinta ou mais inserções
- * a mais ou, o tamanho atual do BD for 30% superior
- */
-fn atualiza_indice_de_insercao(indice:u32) {   
-   /* abre arquivo para escrita de dados, se 
-    * não houver um, então o cria. */
-   let arquivo = {
-      OpenOptions::new()
-      .write(true)
-      .create(true)
-      .open(Path::new(DIR).join(REGISTROS_BD))
-   };
-   match arquivo {
-      Ok(mut file) => {
-         // lendo os únicos 4 bytes dentro do arquivo.
-         let bytes = indice.to_be_bytes();
-         file.write(&bytes[..]).unwrap()
-      },
-      Err(_) => 
-         { panic!("não conseguiu atualizar o índice!"); }
-   };
-}
 
 #[cfg(test)]
 mod tests {

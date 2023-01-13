@@ -60,10 +60,6 @@ pub use stream_serializado::{despeja_bytes, colhe_resultado};
  certas na execução. 
 */
 pub fn menu(argumento:Argumentos, pula_confirmacao:bool) {
-   const QTD_THREADS: usize = 10;
-   // total de forks à "chocar".
-   const QTD_SP: usize = 4;
-   let argumentos = args().skip(1);
    // baseado no tipo de argumento obtido...
    match argumento {
       // informação de ajuda:
@@ -124,38 +120,8 @@ pub fn menu(argumento:Argumentos, pula_confirmacao:bool) {
          );
          // antes de começar faz a cópia do antigo.
          realiza_backup_bd(); 
-      } Argumentos::Privado(tipo) => {
-         match tipo {
-            Funcao::Chamada => {
-               let a = filtra_intervalo(argumentos);
-               let mut geral = divide_intervalo(a, QTD_SP);
-               let mut forques: Vec<Child>;
-               forques = Vec::with_capacity(16);
-               for (o, i) in geral.drain(..).enumerate() {
-                  println!("{}º. {:#?}", (o+1), i);
-                  let processo = gera_processo(i).unwrap(); 
-                  forques.push(processo); 
-               }
-               let mut resultados = Primos::with_capacity(30_000);
-               for sp in forques.iter_mut() { 
-                  let r = colhe_resultado(sp);
-                  resultados.extend(r); 
-               }
-               println!(
-                  "primos encontrados: {}", 
-                  resultados.len()
-               );
-            } Funcao::Processo => {
-               let i = filtra_intervalo(argumentos);
-               let dados = simultaneadade(i, QTD_THREADS);
-               /* como trecho é geralmente chamado
-                * via fork, então todo conteúdo em
-                * bytes é despejado via saída padrão.
-                */
-               despeja_bytes(dados);
-            }
-         };
-      }
+      } Argumentos::Privado(tipo) => 
+         { forques_demanados(tipo); }
    }
 }
 
@@ -255,3 +221,57 @@ fn envia_notificao(dados:&Dados) {
    .unwrap();
 }
 
+/* trazendo para cá, já que, um aninhamento
+ * naquele nível fica muito confuso para
+ * se mexer. Aqui cuida de chamadas privadas,
+ * um modo de dá 'fork' no programa para 
+ * funções internas do programa.
+ * Os comandos que tal aceita estão abaixo,
+ * e claro, tal lista será atualizada no
+ * futuro: 
+ *    varre <a..=b(intervalo)>
+ *    ignção a..=b(intervalo)
+ *    inverte-última-inserção
+ */
+fn forques_demanados(tipo: Funcao) {
+   const QTD_THREADS: usize = 10;
+   // total de forks à "chocar".
+   const QTD_SP: usize = 4;
+   // pulando nome do programa...
+   let argumentos = args().skip(1);
+
+   match tipo {
+      Funcao::Chamada => {
+         let a = filtra_intervalo(argumentos);
+         let mut geral = divide_intervalo(a, QTD_SP);
+         let mut forques: Vec<Child>;
+         forques = Vec::with_capacity(16);
+         for (o, i) in geral.drain(..).enumerate() {
+            println!("{}º. {:#?}", (o+1), i);
+            let processo = gera_processo(i).unwrap(); 
+            forques.push(processo); 
+         }
+         let mut resultados = Primos::with_capacity(30_000);
+         for sp in forques.iter_mut() { 
+            let r = colhe_resultado(sp);
+            resultados.extend(r); 
+         }
+         println!(
+            "primos encontrados: {}", 
+            resultados.len()
+         );
+      } Funcao::Processo => {
+         let i = filtra_intervalo(argumentos);
+         let dados = simultaneadade(i, QTD_THREADS);
+         /* como trecho é geralmente chamado
+          * via fork, então todo conteúdo em
+          * bytes é despejado via saída padrão.
+          */
+         despeja_bytes(dados);
+      } Funcao::Inversao => {
+         let t = ByteOrdem::LittleEndian;
+         let _t = ByteOrdem::BigEndian;
+         inverte_dados_ultima_insercao(t);
+      }
+   };
+}
