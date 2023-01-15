@@ -40,14 +40,14 @@ type Primos = Vec<u64>;
 type Busca = (Primos, u64, u64, u64);
 /* não se repete com frequência, porém
  * deixa o código bem limpo(legível).  */
-type BancoDeDados = Result<BD, &'static str>;
+type BancoDeDados = Result<BD, Error>;
 
 
 /// registra os `Dados` no disco.
 pub fn salva_no_bd(dados:Busca) {
    // configurando o arquivo ao abrir.
    let caminho = Path::new(DIR).join(NOME_BD);
-   let arquivo:Result<File, Error> =  {
+   let arquivo: Result<File, Error>  =  {
       OpenOptions::new()
       .append(true)
       .open(caminho)
@@ -58,25 +58,25 @@ pub fn salva_no_bd(dados:Busca) {
       Ok(mut arq) => {
          // gravando primeiro o tanto de elementos da array.
          let tamanho_array:u64 = dados.0.len() as u64;
-         let seus_bytes:&[u8] = &tamanho_array.to_be_bytes()[..];
+         let seus_bytes:&[u8] = &tamanho_array.to_le_bytes()[..];
          arq.write(seus_bytes).unwrap();
 
          // agora gravando array, valor por valor, byte por byte.
          for valor in dados.0.iter() {
-            let seus_bytes:&[u8] = &valor.to_be_bytes()[..];
+            let seus_bytes:&[u8] = &valor.to_le_bytes()[..];
             arq.write(seus_bytes).unwrap();
          }
 
          // gravando último-número-verificado...
-         let seus_bytes:&[u8] = &dados.1.to_be_bytes()[..];
+         let seus_bytes:&[u8] = &dados.1.to_le_bytes()[..];
          arq.write(seus_bytes).unwrap();
 
          // gravando tempo-de-computação(em miliseg)...
-         let seus_bytes:&[u8] = &dados.2.to_be_bytes()[..];
+         let seus_bytes:&[u8] = &dados.2.to_le_bytes()[..];
          arq.write(seus_bytes).unwrap();
 
          // gravando mini-varreduras-por-100-números...
-         let seus_bytes:&[u8] = &dados.3.to_be_bytes()[..];
+         let seus_bytes:&[u8] = &dados.3.to_le_bytes()[..];
          arq.write(seus_bytes).unwrap();
       },
       // parar programa em caso de erro.
@@ -102,16 +102,15 @@ pub fn salva_no_bd(dados:Busca) {
 
 /// lê todo o conteúdo no banco de dados.
 pub fn carrega_bd() -> BancoDeDados {
-   let mut tabela_dados: BD = BD::new();
+   let mut tabela_dados = BD::new();
    let mut indice: u32 = 1;
 
    // abrindo o arquivo do banco-de-dados...
    let caminho = Path::new(DIR).join(NOME_BD);
-   let mut file:File = {
+   let mut arquivo: File = {
       OpenOptions::new()
       .read(true)
-      .open(caminho)
-      .unwrap()
+      .open(caminho)?
    };
 
    /* enquanto não lê todos bytes do arquivo, ficar
@@ -120,8 +119,10 @@ pub fn carrega_bd() -> BancoDeDados {
     * assim "emitirá" uma quebra de laço. */
    'leitura: loop { 
       // array para armazenar primos escaneados.
-      match deserializa_uma_busca(&mut file) {
+      match deserializa_uma_busca(&mut arquivo) {
          Some(tupla) => {
+            //println!("{:?}", tupla.0);
+            //assert!(false);
             tabela_dados.insert(indice, tupla);
             // contabilizando índice para próxima inserção.
             indice += 1
@@ -165,15 +166,15 @@ pub fn ultimo_numero_computado() -> Option<u64> {
       Ok(bd) => {
          // banco de dados vázio, sem valor desejável.
          if bd.is_empty() 
-            { return None; }
+            { return None; } 
          // última chave.
          let ultima_chave = bd.len() as u32;
          // obtendo 'tupla' com dados desejados.
          let dados = bd.get(&ultima_chave).unwrap();
          // o dado desejado é o segundo da 'tupla'
          Some(dados.1)
-      },
-      Err(_) => None,
+      } Err(erro) => 
+         { println!("{}", erro);  None }
    }
 }
 
@@ -187,7 +188,7 @@ pub fn deserializa_uma_busca(file:&mut File) -> Option<Busca> {
     * colocar numa array. */
    let tamanho:u64;
    match file.read_exact(&mut aux) {
-      Ok(_) => tamanho = u64::from_be_bytes(aux),
+      Ok(_) => tamanho = u64::from_le_bytes(aux),
       Err(_) => return None
    };
    // array para armazenar primos escaneados.
@@ -200,7 +201,7 @@ pub fn deserializa_uma_busca(file:&mut File) -> Option<Busca> {
          Err(_) => return None
       };
       // colocando na array primo recuperado do disco.
-      primos.push(u64::from_be_bytes(aux));
+      primos.push(u64::from_le_bytes(aux));
    }
    // obtendo valor de 8-bytes.
    match file.read_exact(&mut aux) {
@@ -208,21 +209,21 @@ pub fn deserializa_uma_busca(file:&mut File) -> Option<Busca> {
       Err(_) => return None,
    };
    // transformando 8-bytes array num valor de 64bits
-   let unv = u64::from_be_bytes(aux);
+   let unv = u64::from_le_bytes(aux);
    // obtendo valor de 8-bytes.
    match file.read_exact(&mut aux) {
       Ok(_) => (),
       Err(_) => return None,
    };
    // transformando 8-bytes array num valor de 64bits
-   let ttc = u64::from_be_bytes(aux);
+   let ttc = u64::from_le_bytes(aux);
    // obtendo valor de 8-bytes.
    match file.read_exact(&mut aux) {
       Ok(_) => (),
       Err(_) => return None,
    };
    // transformando 8-bytes array num valor de 64bits
-   let mvr = u64::from_be_bytes(aux);
+   let mvr = u64::from_le_bytes(aux);
    Some((primos, unv, ttc, mvr))
 }
 

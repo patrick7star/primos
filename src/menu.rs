@@ -169,11 +169,16 @@ fn informacao_da_varredura(dados:&Dados) {
 }
 
 pub fn info_bd_binario() {
-   let unv = ultimo_numero_computado().unwrap();
+   //let unv = ultimo_numero_computado().unwrap();
    let primos_encontrados = coleta_todos_primos().unwrap();
    let qtd_primos:u64 = primos_encontrados.len() as u64;
-   println!("\nquantidade de primos:\t{}", qtd_primos);
-   println!("última verificação:\t{}", unv);
+   println!(
+      "
+      \rquantidade de primos:\t{}
+      \rúltima verificação:\t{}
+      ", qtd_primos,
+      ultimo_numero_computado().unwrap() 
+   );
 
    // primeiros primos. 
    let inicio = Coluna::nova(
@@ -274,7 +279,7 @@ fn forques_demanados(tipo: Funcao) {
       } Funcao::Inversao => {
          let t = ByteOrdem::LittleEndian;
          let _t = ByteOrdem::BigEndian;
-         inverte_dados_ultima_insercao(t);
+         inverte_byte_order_de_todos_dados(t);
       } Funcao::Deleta => {
          // descarta.
          std::mem::drop(argumentos.next());
