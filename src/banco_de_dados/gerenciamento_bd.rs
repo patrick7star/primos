@@ -176,22 +176,42 @@ fn ultima_insercao_feita(mut arquivo:File) -> Option<u32> {
    // lendo os únicos 4 bytes dentro do arquivo.
    match arquivo.read_exact(&mut bytes) {
       Ok(_) => {
-         let valor = u32::from_le_bytes(bytes);
+         let mut valor = u32::from_le_bytes(bytes);
+         // pode está escrito numa ordem big-endian.
+         if valor > 100_000_000
+            { valor = u32::from_be_bytes(bytes); }
          Some(valor)
       } Err(_) => None
    }
 }
 
-/**
- Extrai um backup passado e carrega-o
- na memória assim como faz com o atual 
- consultado. 
-*/
+use std::fs::{read_dir, remove_dir_all};
+/* acha a primeira base onde realmente
+ * tem arquivos, ou diretórios contendo
+ * arquivos, e retorna ele é claro. */
+fn primeira_base(raiz: &Path) -> Result<PathBuf, Str>{
+   // iterando entradas no diretório.
+   for entrada in read_dir(raiz).unwrap() {
+      if let Ok(entry) = entrada {
+         let caminho = entry.path();
+         // se achar um arquivo, então este é o diretório base.
+         if caminho.is_file()
+           { return Ok(raiz.to_path_buf()); }
+         /* caso não, e ache um diretório, entra
+          * neste diretório, e verificar se ele
+          * pode ser um diretório base. */
+         if caminho.is_dir()
+            { return primeira_base(&caminho);  }
+      }
+   }
+   Err("nenhuma 'base' encontrada!")
+}
+
+/** Extrai um backup passado e carrega-o na memória 
+ assim como faz com o atual consultado.  */
 fn carrega_backup(caminho: &Path) -> Backup {
-   let base: PathBuf;
-   match descompacta(caminho) {
-      Some(path_do_dir) => 
-         { base = path_do_dir; },
+   let base: PathBuf = match descompacta(caminho) {
+      Some(path_do_dir) => path_do_dir,
       None => { 
          println!(
             "Tem certeza que este '{}' caminho é o certo?", 
@@ -202,14 +222,32 @@ fn carrega_backup(caminho: &Path) -> Backup {
    };
 
    // caminhos para os arquivos:
-   let ui_file = base.as_path().join(CAMINHO_UI);
-   let bd_file = base.as_path().join(CAMINHO_BD);
+   let mut ui_file = base.as_path().join(CAMINHO_UI);
+   let mut bd_file = base.as_path().join(CAMINHO_BD);
+   /* se não achou os arquivos no atual diretório, 
+    * fazer uma varredura e tentar encontrar onde
+    * estão localizados nos seus subdirs. */
+   if !ui_file.exists() || !bd_file.exists() { 
+      let mut complemento = primeira_base(&base).unwrap();
+      /* descartando último diretório, porque já 
+       * vem no CAMINHO_UI. */
+      drop(complemento.pop());
+      if !ui_file.exists()
+         { ui_file = complemento.join(CAMINHO_UI); }
+      if !bd_file.exists() 
+         { bd_file = complemento.join(CAMINHO_BD); }
+      assert!(ui_file.exists());
+      assert!(bd_file.exists());
+   }
 
    // conteúdos em sí:
    let file = File::open(ui_file).unwrap();
    let ui = ultima_insercao_feita(file).unwrap(); 
    let file = File::open(bd_file).unwrap();
    let bd = carrega_bd_do_arquivo(file)?;
+
+   // deleta descompactação depois de utilizado.
+   remove_dir_all(base).unwrap();
 
    return Ok((ui, bd));
 }
@@ -294,24 +332,21 @@ mod tests {
 
    // info do backup carregado.
    fn info_backup(dados: (u32, BD)) {
-      let (mut ui, bd) = dados;
+      let (ui, bd) = dados;
       /* erro de incremento ao gravar. Conflito
        * de dados antigos com novos. */
-      let relevante = match bd.get(&dbg!(ui)) {
-         Some(conteudo) => conteudo,
-         None => 
-            { ui -= 1; bd.get(&(ui-1)).unwrap() }
-      };
-      // primeiro e último primo encontrado.
-      let t = relevante.0.len();
-      let first_prime = relevante.0[0];
-      let last_prime = relevante.0[t-1];
-      println!(
-         "\túltima inserção(total também): {}
-         \r\tprimeiro/e útlimo primos: {} e {}
-         \r\ttotal de primos: {}", 
-         ui, first_prime, last_prime,t
-      )
+      if let Some(conteudo) = bd.get(&dbg!(ui)) {
+         // primeiro e último primo encontrado.
+         let t = &conteudo.0.len();
+         let first_prime = &conteudo.0[0];
+         let last_prime = &conteudo.0[t - 1];
+         println!(
+            "\túltima inserção(total também): {}
+            \r\tprimeiro/e útlimo primos: {} e {}
+            \r\ttotal de primos: {}", 
+            ui, first_prime, last_prime, t
+         );
+      }
    }
 
    #[test]
@@ -323,8 +358,7 @@ mod tests {
          let path = entrada.unwrap().path();
          println!("\n{:#?}", path);
          match carrega_backup(path.as_path()) {
-            Ok(tupla) => 
-               { info_backup(tupla); }
+            Ok(tupla) => { info_backup(tupla);  }
             Err(_) => {}
          };
          assert!(true);
@@ -334,6 +368,44 @@ mod tests {
       let textual = escreve_por_extenso(contador as u64);
       println!("\n{} ao total carregados.", textual.unwrap());
       // avaliação manual.
+      assert!(true);
+   }
+
+   #[test]
+   fn visualizacao_das_chaves() {
+      let entradas = read_dir(TODOS_BACKUPS).unwrap();
+      let t = Duration::from_secs(120);
+      let mut remocao_automatica = DeletorPaciente::novo(t);
+
+      for entrada in entradas {
+         let path = entrada.unwrap().path();
+         println!("\n{:#?}", path);
+         if let Ok((ui, _)) = carrega_backup(&path) {
+            println!("chave: {}", ui);
+         }
+         remocao_automatica += path;
+      }
+      // confirmação  manual.
+      assert!(true);
+   }
+
+
+   #[test]
+   fn acha_raiz_do_arquivos() {
+      let caminho_str = concat!(
+         "data/backups",
+         "/backup_bd_1678036202065.zip"
+      );
+      match descompacta(Path::new(caminho_str)) {
+         Some(caminho) => {
+            let pth = primeira_base(&caminho).unwrap();
+            println!("{:?}", pth);
+            println!("a excluir {:?}", caminho);
+            remove_dir_all(caminho).unwrap();
+         } None =>
+            { println!("não foi possível descompactar."); }
+      }
+      // confirmação  manual.
       assert!(true);
    }
 }
