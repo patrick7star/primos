@@ -11,7 +11,18 @@ use std::fmt::Error;
 //use std::ops::RangeInclusive;
 
 #[derive(Debug)]
-pub enum Funcao { Chamada, Processo, Inversao, Deleta }
+pub enum Funcao { 
+   /* tenta potencializar todo poder computacional
+    * disponível, usando de todas ferramentas de
+    * paralelismo disponível. */
+   Chamada, Processo, 
+   Inversao, Deleta, 
+   /* alternativa ao primeiro, usa só 
+    * subprocessos para alavancar o processamento,
+    * pois não faz diferença lança-lô através
+    * de threads juntos ao mesmo tempo. */
+   PoderTotal, NovaChamada
+}
 
 // argumentos comuns ao executar o programa.
 #[derive(Debug)]
@@ -164,6 +175,10 @@ pub fn transforma(argumentos:&Vec<String>) -> Argumentos {
          return Argumentos::Privado(Funcao::Chamada);
       } else if opcao == "varre" {
          return Argumentos::Privado(Funcao::Processo);
+      } else if opcao == "processa" {
+         return Argumentos::Privado(Funcao::PoderTotal);
+      } else if opcao == "nova-ignição" {
+         return Argumentos::Privado(Funcao::NovaChamada);
       } else 
          { return Argumentos::Ajuda; }
    } else if total == 4 {
