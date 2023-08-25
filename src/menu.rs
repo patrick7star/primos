@@ -229,6 +229,7 @@ fn envia_notificao(dados:&Dados) {
 use crate::banco_de_dados::deleta_caminho;
 use std::str::FromStr;
 use std::path::Path;
+use super::motor::{varre};
 /* trazendo para cá, já que, um aninhamento
  * naquele nível fica muito confuso para
  * se mexer. Aqui cuida de chamadas privadas,
@@ -244,16 +245,17 @@ use std::path::Path;
 fn forques_demanados(tipo: Funcao) {
    const QTD_THREADS: usize = 10;
    // total de forks à "chocar".
-   const QTD_SP: usize = 4;
+   //const QTD_SP: usize = 4;
+   let qtd_sp = num_cpus::get();
    // pulando nome do programa...
    let mut argumentos = args().skip(1);
 
    match tipo {
       Funcao::Chamada => {
          let a = filtra_intervalo(argumentos);
-         let mut geral = divide_intervalo(a, QTD_SP);
+         let mut geral = divide_intervalo(a, qtd_sp);
          let mut forques: Vec<Child>;
-         forques = Vec::with_capacity(16);
+         forques = Vec::with_capacity(2 * qtd_sp);
          for (o, i) in geral.drain(..).enumerate() {
             println!("{}º. {:#?}", (o+1), i);
             let processo = gera_processo(i).unwrap(); 
@@ -292,6 +294,34 @@ fn forques_demanados(tipo: Funcao) {
          let tempo = Duration::from_secs(tempo);
          // deletando diretório...
          deleta_caminho(caminho.to_path_buf(), tempo);
+      } Funcao::NovaChamada => {
+         let a = filtra_intervalo(argumentos);
+         let mut geral = divide_intervalo(a, qtd_sp);
+         let mut forques: Vec<Child>;
+         forques = Vec::with_capacity(qtd_sp + 3);
+
+         for (o, i) in geral.drain(..).enumerate() {
+            println!("{}º. {:#?}", (o+1), i);
+            let processo = gera_processo(i).unwrap(); 
+            forques.push(processo); 
+         }
+
+         let mut resultados = Primos::with_capacity(30_000);
+         for sp in forques.iter_mut() { 
+            let r = colhe_resultado(sp);
+            resultados.extend(r); 
+         }
+
+         println!(
+            "primos encontrados: {}", 
+            resultados.len()
+         );
+      } Funcao::PoderTotal => {
+         let dados = varre(filtra_intervalo(argumentos));
+         /* como trecho é geralmente chamado
+          * via fork, então todo conteúdo em
+          * bytes é despejado via saída padrão.  */
+         despeja_bytes(dados);
       }
    };
 }

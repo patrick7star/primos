@@ -25,7 +25,7 @@ mod temporizador;
 pub use turbina::{
    simultaneadade, 
    divide_intervalo,
-   Primos
+   Primos, varre
 };
 pub use paraleliza::{
    filtra_intervalo, 
