@@ -106,4 +106,11 @@ mod tests {
       // avaliação manual.
       assert!(true);
    }
+
+   #[test]
+   fn numCPUsExternPackage() {
+      use num_cpus;
+      println!("total de CPU's é {}.", num_cpus::get());
+      assert_eq!(num_cpus::get(), 4);
+   }
 }

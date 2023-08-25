@@ -13,7 +13,7 @@ type Fios = Vec<JoinHandle<Primos>>;
 /* embrulho da função 'primos_faixa', que
  * retorna a array de u64 como um conjunto
  * do mesmo. */
-fn varre(intervalo: Intervalo) -> Primos {
+pub fn varre(intervalo: Intervalo) -> Primos {
    let a = *intervalo.start();
    let b = * intervalo.end();
    let mut array = primos_faixa(a, b);
