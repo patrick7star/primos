@@ -85,9 +85,11 @@ impl Cronometro {
    #[allow(dead_code)]
    pub fn marca(&mut self) -> Duration {
       let decorrido = self.0.elapsed();
+
       if self.1.capacity() == self.1.len()
          { self.1.pop_front().unwrap(); }
-      self.1.push_back(decorrido.clone());
+      self.1.push_back(decorrido);
+
       return decorrido;
    }
    /* decorrido desde o último marco
@@ -143,9 +145,6 @@ impl PartialEq<Duration> for Cronometro {
       //println!("margem: {}%", (1.0-p) * 100.0);
       (1.0-p) < 0.05 
    }
-   /* a negação da setença acima. */
-   fn ne(&self, direita: &Duration) -> bool 
-      { !self.eq(direita) }
 }
 
 impl Debug for Cronometro {

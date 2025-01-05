@@ -18,9 +18,10 @@ pub fn varre(intervalo: Intervalo) -> Primos {
    let b = * intervalo.end();
    let mut array = primos_faixa(a, b);
    let mut conjunto = Primos::with_capacity(array.len());
+
    for e in array.drain(..)
       { conjunto.insert(e); }
-   return conjunto;
+   conjunto
 }
 
 /* gera vários intervalos disjuntos, dado os
@@ -38,8 +39,9 @@ fn intervalos_de(mut i: u64, f: u64, qtd: u64) -> Intervalos {
          { lista.push(i..=(i+q)); primeiro = true; }
       i += q;
    }
+
    lista.push((i+1)..=f);
-   return lista;
+   lista
 }
 
 /* pega o intervalo dado, faz repartições, e
@@ -73,7 +75,7 @@ pub fn simultaneadade(i: Intervalo, nt: usize) -> Primos {
             { panic!("não funcionou para tal 'fio'."); }
       };
    }
-   return conjunto;
+   conjunto
 }
 
 /* O mesmo que o intervalo_de, no entanto, ele
@@ -95,7 +97,7 @@ pub fn divide_intervalo(i: Intervalo, qtd: usize) -> Intervalos {
 mod tests {
    use super::*;
    extern crate utilitarios;
-   use utilitarios::tabela_visualizacao::{Tabela, Coluna};
+   use utilitarios::tabelas::{Tabela, Coluna};
    use crate::motor::temporizador::Cronometro;
 
    #[test]

@@ -37,6 +37,7 @@ assert_eq!(false, e_primoI(nao_primo));
 ```
 */
 #[allow(non_snake_case)]
+#[allow(clippy::needless_return)]
 pub fn e_primoI(n: u64) -> bool {
    // se o valor for 1, já retorna como não-primo.
    if n == 1 || n == 0 
