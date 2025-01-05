@@ -22,17 +22,14 @@ mod paraleliza;
 mod primos_identificador;
 mod temporizador;
 // re-exportando ...
-pub use turbina::{
-   simultaneadade, 
-   divide_intervalo,
-   Primos, varre
-};
-pub use paraleliza::{
-   filtra_intervalo, 
-   gera_processo
-};
+pub use turbina::{simultaneadade, divide_intervalo, Primos, varre};
+pub use paraleliza::{ filtra_intervalo, gera_processo};
 pub use primos_identificador::e_primoI;
 pub use temporizador::*;
+
+// Abreviados para algumas estrutura de dados definidas:
+type PP = ProgressoPercentual;
+type PT = ProgressoTemporal;
 
 /**
 retorna 'verdadeiro' ou 'falso' se o número é primo. 
@@ -49,6 +46,7 @@ assert_eq!(false, e_primo(nao_primo));
 ```
 */
 #[allow(dead_code)]
+#[allow(clippy::needless_return)]
 pub fn e_primo(n:u64) -> bool{
     // se o valor for 1, já retorna como não-primo.
     if n == 1 || n == 0 { return false; }
@@ -80,6 +78,7 @@ pub fn e_primo(n:u64) -> bool{
  );
  ```
 */
+#[allow(clippy::needless_return)]
 fn primos_faixa(inicio:u64, fim:u64) -> Vec<u64> {
     // "lista" de primos nesta faixa de intervalo.
     let mut primos:Vec<u64> = Vec::new();
@@ -87,17 +86,17 @@ fn primos_faixa(inicio:u64, fim:u64) -> Vec<u64> {
     // testando se é primo um por um...
     for p in inicio..=fim {
         if e_primoI(p) 
-        //if e_primo(p)
            { primos.push(p); }
     }
 
     return primos;
 }
 
+type ListaDePrimos = Vec<u64>;
 /* definindo um novo tipo de dados para a tupla
  * que representa a colêtanea produzida pela 
  * varredura. */
-type Dados = (Vec<u64>, u64, u64, u64);
+type Dados = (ListaDePrimos, u64, u64, u64);
 
 
 /** retorna uma tupla contendo o último número verificado
@@ -143,7 +142,7 @@ pub fn busca_continua(inicio:u64, qtd:u64) -> Dados {
      *     a total da quantia demandada inicialmente.
      * 4º) a quantia de buscas feitas, com raios de 100 
      *     números. */
-    return (lista, f, tempo.marca().as_secs(), buscas);
+    (lista, f, tempo.marca().as_secs(), buscas)
 }
 
 /// informa o progresso da "busca continua".
@@ -154,7 +153,7 @@ fn info_progresso(qtd_atual:usize, qtd_demanda:u64, primo:u64) {
    /* impressão com quebra de linha, dependendo ou não
     * se a tarefa foi completa. */
    let barra_msg= format!(
-      "último primo encontrado é {1}...{0:4.1}%",
+      "Último primo encontrado é {1}...{0:4.1}%",
       percentagem * 100.0,
       primo
    );
@@ -165,44 +164,37 @@ fn info_progresso(qtd_atual:usize, qtd_demanda:u64, primo:u64) {
       { println!("\r{}", barra_msg); }
 }
 
-type PP = ProgressoPercentual;
-type PT = ProgressoTemporal;
-/* outro info progresso. A barra 
- * embrulhada com o primo na frente. */
 fn info_progresso_ii(barra:&mut PP, atual:usize, primo:u64) {
-   // atualiza valor.
+/* Outro info progresso. A barra embrulhada com o primo na frente. */
+   // Atualiza valor.
    *barra += atual as u64;
-   match barra.imprime() {
-      Some(bpp) => { 
-         if barra.esgotado
-            { println!("\r{} ({})", bpp, primo); }
-         else
-            { print!("\r{} ({})", bpp, primo); }
-      } None => ()
-   };
+
+   // match barra.imprime() {
+   if let Some(bpp) = barra.imprime() {
+      if barra.esgotado
+         { println!("\r{} ({})", bpp, primo); }
+      else
+         { print!("\r{} ({})", bpp, primo); }
+   }
 }
 
-fn info_progresso_iii(barra:&mut PT, primo:u64) {
-   /* impressão com quebra de linha, dependendo ou não
-    * se a tarefa foi completa. */
+fn info_progresso_iii(barra:&mut PT, primo:u64, percentual: f32) {
+/* Impressão com quebra de linha, dependendo ou não se a tarefa foi 
+ * completa. */
    let barra_msg= format!(
-      "último primo encontrado é {1}, {0:4.1}%",
-      barra.percentual() * 100.0,
-      primo
+      "Último primo encontrado é {1}, {0:4.1}%",
+      percentual * 100.0, primo
    );
 
-   match barra.imprime() {
-      Some(_) =>  
-         if barra.percentual() < 1.0
-            { print!("\r{}", barra_msg); }
-         else
-            { println!("\r{}", barra_msg); }
-      None => ()
-   };
+   if barra.imprime().is_some() {
+      if percentual < 1.0
+         { print!("\r{}", barra_msg); }
+      else
+         { println!("\r{}", barra_msg); }
+   }
 }
 
-/** faz busca levando em consideração o tempo
-  não uma quantia demandada. */
+/** Faz busca levando em consideração o tempo não uma quantia demandada. */
 pub fn busca_continua_temporizada(inicio:u64, tempo:Duration) -> Dados {
     let mut lista: Vec<u64> = Vec::new();
     // fim e ínicio de cada busca realizada.
@@ -213,8 +205,9 @@ pub fn busca_continua_temporizada(inicio:u64, tempo:Duration) -> Dados {
     let contador = Temporizador::novo(tempo);
 
     // barra de progresso, é já têm um temporizador próprio.
-    let mut barra = PT::cria(tempo.as_secs(), 500);
-    info_progresso_iii(&mut barra, inicio);
+    let segs = Duration::from_secs_f32(0.500);
+    let mut barra = PT::cria(tempo.as_secs(), segs);
+    info_progresso_iii(&mut barra, inicio, 0.30);
     let mut ultimo_primo: u64;
 
     loop {
@@ -224,7 +217,7 @@ pub fn busca_continua_temporizada(inicio:u64, tempo:Duration) -> Dados {
       // progresso da varredura.
       let indice = lista.len()-1;
       ultimo_primo = lista[indice];
-      info_progresso_iii(&mut barra, ultimo_primo);
+      info_progresso_iii(&mut barra, ultimo_primo, 0.52);
 
       //contabilizando mais uma busca.
       buscas += 1; 
@@ -237,7 +230,7 @@ pub fn busca_continua_temporizada(inicio:u64, tempo:Duration) -> Dados {
     std::thread::sleep(Duration::from_secs_f32(3.7));
     /* para que a barra complete 100%, forçando
      * uma última impressão de tela. */
-    info_progresso_iii(&mut barra, ultimo_primo);
+    info_progresso_iii(&mut barra, ultimo_primo, 0.45);
     // registra tempo final.
     /* o retorno de dados é organizado do seguinte modo:
      * 1º. a lista de primos encontrados durante a busca.
@@ -251,5 +244,5 @@ pub fn busca_continua_temporizada(inicio:u64, tempo:Duration) -> Dados {
       tempo.checked_sub(contador.contagem())
       .unwrap().as_secs()
     };
-    return (lista, f, decorrido, buscas);
+    (lista, f, decorrido, buscas)
 }

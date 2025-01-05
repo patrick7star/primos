@@ -1,8 +1,7 @@
 /*! 
- Mesmo o programa sendo um executável, se algum dia 
- tiver alguma utilidade para outro, então pode servir
- como uma biblioteca, com todas suas funções usadas 
- internamentes compartilhadas aqui.
+ Mesmo o programa sendo um executável, se algum dia tiver alguma utilidade 
+ para outro, então pode servir como uma biblioteca, com todas suas funções 
+ usadas internamentes compartilhadas aqui.
 
  # Na biblioteca: 
  * Aqui são guardados todo o ferramental do programa. 
@@ -20,44 +19,32 @@
 
 // biblioteca externa:
 extern crate utilitarios;
-use utilitarios::{
-   tabela_visualizacao::{Coluna, Tabela},
-   lanca_prompt,
-   legivel::tempo
-};
-
-// biblioteca do Rust:
+use utilitarios::{tabelas::{Coluna, Tabela}, lanca_prompt, legivel::tempo};
+// Biblioteca do Rust:
 use std::fs::read_to_string;
 use std::time::Duration;
-//use std::fmt::Error;
 use std::process::{Child, Command};
 use std::env::args;
 
-// meus módulos:
-use super::banco_de_dados::*;
+// Meus módulos:
+use super::banco::*;
 #[doc(inline)]
-use super::motor::{
-   busca_continua, 
-   busca_continua_temporizada,
-   // novas inserções:
-   filtra_intervalo,
-   divide_intervalo,
-   gera_processo,
-   simultaneadade,
-   Primos
+use super::motor::{ 
+   busca_continua, busca_continua_temporizada, filtra_intervalo, 
+   divide_intervalo, gera_processo, simultaneadade, Primos
 };
 use super::{Dados, A_BUSCAR};
 use crate::computa_caminho;
-// extensão do módulo.
+// Extensão do módulo.
 mod tipo;
 pub use tipo::{Argumentos, Funcao, transforma};
 mod stream_serializado;
 pub use stream_serializado::{despeja_bytes, colhe_resultado};
 
+
 /**
- menu para gerenciar os argumentos passados 
- e, baseado neles, chamar as ferramentas
- certas na execução. 
+ Menu para gerenciar os argumentos passados e, baseado neles, chamar as 
+ ferramentas certas na execução. 
 */
 pub fn menu(argumento:Argumentos, pula_confirmacao:bool) {
    // baseado no tipo de argumento obtido...
@@ -81,7 +68,7 @@ pub fn menu(argumento:Argumentos, pula_confirmacao:bool) {
       } Argumentos::ProcuraTempo(t) => { 
          // varre por primos dado um determinado tempo.
          let t: u64 = t as u64;
-         println!("seu tempo demandado: {}", tempo(t, false));
+         println!("Seu tempo demandado: {}", tempo(t, false));
          // carrega de onde parou:
          let onde_parou = ultimo_numero_computado().unwrap();
          // cria "intervalo" de computação.
@@ -125,46 +112,48 @@ pub fn menu(argumento:Argumentos, pula_confirmacao:bool) {
    }
 }
 
-// entrada para confirmação, retorna verdadeiro ou falso.
+// Entrada para confirmação, retorna verdadeiro ou falso.
 fn salvar_varredura(dados:Dados, funcao:fn(Dados)) -> bool {
-   // string contendo dados, futuramente...
-   let confirmacao:String;
-   /* salvo, ou não... visualizando um 
-    * pouco do que foi encontrado. */
+   /* Salvo, ou não... visualizando um pouco do que foi encontrado. */
    informacao_da_varredura(&dados);
-   // pergunta de confirmação.
-   confirmacao = lanca_prompt("armazenar dados no BD[sim/não]");
+   // String contendo dados, futuramente...
+   let confirmacao = lanca_prompt("\nArmazenar dados no BD[sim/não]");
+
    // obtendo confirmação via teclado.
    if confirmacao.trim() == "sim" { 
       // salvando no caso de "positivo".
-      print!("gravando...");
+      print!("Gravando...");
       funcao(dados);
-      println!("feito.");
+      println!("feito.\n");
       true 
+
    } else if confirmacao == "não" { 
-      println!("você NÃO QUIS gravar o resultado encontrado.");
+      println!("Você NÃO QUIS gravar o resultado encontrado.\n");
       false
+
    } else {
       println!(
-         "\"{}\" não é uma resposta válida, apenas
-         \r[sim/não], e sim, têm que ser minúsculas 
-         \rambas. Tente novamente!\n", 
+         "\t\"{}\" Não é uma resposta válida, apenas [sim/não], e sim, têm 
+         \r\tque ser minúsculas ambas. Tente novamente!\n", 
          confirmacao
       );
-      // relançar novamente a questão.
-      return salvar_varredura(dados, funcao);
+      // Relançar novamente a questão.
+      salvar_varredura(dados, funcao)
    }
 }
 
 fn informacao_da_varredura(dados:&Dados) {
-   let rotulo_i = "qtd. de primos achados";
-   let rotulo_ii = "varredura de 100 feitas";
-   let rotulo_iii = "onde parou";
+   let rotulos = [
+      "Qtd. de primos achados",
+      "Varredura de 100 feitas",
+      "Onde parou"
+   ];
+
    println!(
       "{}:{}\n{}: {}\n{}: {}", 
-      rotulo_i, dados.0.len(),
-      rotulo_ii, dados.3,
-      rotulo_iii, dados.1
+      rotulos[0], dados.0.len(),
+      rotulos[1], dados.3,
+      rotulos[2], dados.1
    );
 }
 
@@ -211,12 +200,13 @@ pub fn info_bd_binario() {
    println!("{}", tabela);
 }
 
+use utilitarios::legivel::{valor_legivel};
+
 // notificação de termino da mineração.
 fn envia_notificao(dados:&Dados) {
    let mensagem:String = format!(
-      "achou {} primos, e o último número verificado foi {}",
-      dados.0.len(),
-      dados.1
+      "Achou {} primos, e o último número verificado foi {}",
+      valor_legivel(dados.0.len()), dados.1
    );
    // executando comando ...
    Command::new("notify-send")
@@ -226,18 +216,15 @@ fn envia_notificao(dados:&Dados) {
    .unwrap();
 }
 
-use crate::banco_de_dados::deleta_caminho;
+use crate::banco::deleta_caminho;
 use std::str::FromStr;
 use std::path::Path;
 use super::motor::{varre};
-/* trazendo para cá, já que, um aninhamento
- * naquele nível fica muito confuso para
- * se mexer. Aqui cuida de chamadas privadas,
- * um modo de dá 'fork' no programa para 
- * funções internas do programa.
- * Os comandos que tal aceita estão abaixo,
- * e claro, tal lista será atualizada no
- * futuro: 
+/* Trazendo para cá, já que, um aninhamento naquele nível fica muito 
+ * confuso para se mexer. Aqui cuida de chamadas privadas, um modo de dá 
+ * 'fork' no programa para funções internas do programa. Os comandos que 
+ * tal aceita estão abaixo, e claro, tal lista será atualizada no futuro: 
+ *
  *    varre <a..=b(intervalo)>
  *    ignção a..=b(intervalo)
  *    inverte-última-inserção

@@ -1,22 +1,23 @@
-// biblioteca padrão do Rust:
+#![allow(clippy::needless_return)]
+
+// Biblioteca padrão do Rust:
 use std::env::args;
+use std::path::PathBuf;
+use std::env::current_exe;
 
-// minha biblioteca:
+// Minha biblioteca:
 mod motor; 
-mod banco_de_dados;
+mod banco;
 mod menu;
-//mod gerenciamento_bd;
-//mod deletador;
-//mod organizacao_bd;
 
-// define-se com quase mil número primos a buscar.
-const A_BUSCAR:u64 = 932;
-/* definindo um novo tipo de dados para a tupla
- * que representa a colêtanea produzida pela 
- * varredura. */
+// Define-se com quase mil número primos a buscar.
+const A_BUSCAR: u64 = 932;
+/* Definindo um novo tipo de dados para a tupla que representa a colêtanea 
+ * produzida pela varredura. */
 type Dados = (Vec<u64>, u64, u64, u64);
 
-// se há um argumento para burlar prompt de confirmação.
+
+// Se há um argumento para burlar prompt de confirmação.
 fn burla_prompt(args:&mut Vec<String>) -> bool {
    // verificando confirmas em todos argumentos passados.
    for (indice, s) in args.iter().enumerate() {
@@ -46,8 +47,6 @@ fn main() {
    menu::menu(argumentos, salvo_automatico);
 }
 
-use std::path::PathBuf;
-use std::env::current_exe;
 /* computa o caminho ao diretório
  * baseado no caminho do executável. */
 fn computa_caminho(extra: &str) -> PathBuf {
