@@ -5,17 +5,15 @@
  */
 
 // biblioteca padrão do Rust.
-use std::path::{PathBuf, Path};
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::collections::HashMap;
-use std::fs::{File, create_dir};
-use std::io::Read;
-use std::process::Command;
-use std::env::temp_dir;
+use std::{
+   path::{PathBuf},
+   time::{SystemTime, UNIX_EPOCH},
+   fs::{create_dir},
+   process::Command,
+   env::temp_dir,
+};
 // próprio caixote.
-use crate::{Dados, computa_caminho};
-// próprio módulo.
-use super::deserializa_uma_busca as deserializa;
+use crate::{computa_caminho};
 
 // nome do atual BD.
 const CAMINHO_BD:&str = "data/banco_de_dados.dat";
@@ -25,16 +23,8 @@ const CAMINHO_REGISTROS:&str = "data/registros.dat";
 const TODOS_BACKUPS:&str = "data/backups/";
 const NOME_ORIGINAL_ARQ:&str = "backup_bd";
 
-/* abre o arquivo zip, lê seus dados e retorna
- * se for um arquivo incompatível dispara erro. */
-type BD = HashMap<u32, Dados>;
-// renomeando tipo de dado para legibilidade.
-type Str = &'static str;
-// backup completo.
-type Backup = Result<(u32, BD), Str>;
-
-
-// computa um 'nome+ID' para dá ao archive criado.
+// Computa um 'nome+ID' para dá ao archive criado.
+#[allow(clippy::needless_return)]
 fn cria_nome_id() -> PathBuf {
    let tempo_id: u128 = {
       SystemTime::now()
@@ -57,10 +47,8 @@ fn cria_nome_id() -> PathBuf {
 }
 
 /** 
- realiza um novo backup do BD, ele salva 
- tanto o aglomerado de dados gerados, como 
- o atalho para acessar o BD de forma
- mais específica.  
+ Realiza um novo backup do BD, ele salva tanto o aglomerado de dados 
+ gerados, como o atalho para acessar o BD de forma mais específica.  
 */
 pub fn realiza_backup_bd() { 
    // transformando slice-strings em 'PathBuf'.
@@ -103,171 +91,13 @@ pub fn realiza_backup_bd() {
    move_zipados.spawn().unwrap();
 }
 
-// descompacta um backup.
-fn descompacta(caminho:&Path) -> Option<PathBuf> {
-   /* um nome inválido, portanto, o caminho também
-    * inválido produz nenhum dado. */
-   if !caminho.exists()
-      { return None; }
-
-   // nome do arquivo em sí.
-   let nome: &str = {
-      caminho
-      .file_name()
-      .unwrap()
-      .to_str()
-      .unwrap()
-   };
-   // cria diretório para armazenar "artefatos".
-   let destino = {
-      let nome_dir = {
-         nome
-         .strip_suffix(".zip")
-         .unwrap()
-      };
-      let mut caminho = temp_dir();
-      caminho.push(nome_dir);
-      caminho
-   };
-   match create_dir(destino.as_path()) {
-      Ok(_) => (),
-      Err(_) => { 
-         println!("\"{}\" já existe.", destino.display()); 
-         print!("\texcluindo-o ...");
-         create_dir(destino.as_path()).unwrap();
-         println!("feito.");
-      }
-   };
-
-   // comando de descompactação:
-   let mut comando = Command::new("unzip");
-   comando.arg("-o");
-   comando.arg(caminho);
-   comando.arg("-d");
-   comando.arg(destino.as_path());
-
-   // executa o comando.
-   comando.output().unwrap();
-   // retora diretório contedo arquivos descompactados.
-   return Some(destino);
-}
-
-// carrega arquivo do disco.
-fn carrega_bd_do_arquivo(mut arquivo:File) -> Result<BD, Str> {
-   let mut tabela: BD = BD::new();
-   let mut indice:u32 = 1;
-
-   loop { 
-      match deserializa(&mut arquivo) {
-         // tupla representando busca.
-         Some(tupla) => {
-            tabela.insert(indice, tupla);
-            indice += 1;
-         } None => break Ok(tabela)
-      };
-   }
-}
-
-// carrega arquivo contendo número de inserções.
-fn ultima_insercao_feita(mut arquivo:File) -> Option<u32> {
-   // buffer:
-   let mut bytes = [u8::MAX; 4];
-
-   // lendo os únicos 4 bytes dentro do arquivo.
-   match arquivo.read_exact(&mut bytes) {
-      Ok(_) => {
-         let mut valor = u32::from_le_bytes(bytes);
-         // pode está escrito numa ordem big-endian.
-         if valor > 100_000_000
-            { valor = u32::from_be_bytes(bytes); }
-         Some(valor)
-      } Err(_) => None
-   }
-}
-
-use std::fs::{read_dir, remove_dir_all};
-/* acha a primeira base onde realmente
- * tem arquivos, ou diretórios contendo
- * arquivos, e retorna ele é claro. */
-fn primeira_base(raiz: &Path) -> Result<PathBuf, Str>{
-   // iterando entradas no diretório.
-   for entrada in read_dir(raiz).unwrap() {
-      if let Ok(entry) = entrada {
-         let caminho = entry.path();
-         // se achar um arquivo, então este é o diretório base.
-         if caminho.is_file()
-           { return Ok(raiz.to_path_buf()); }
-         /* caso não, e ache um diretório, entra
-          * neste diretório, e verificar se ele
-          * pode ser um diretório base. */
-         if caminho.is_dir()
-            { return primeira_base(&caminho);  }
-      }
-   }
-   Err("nenhuma 'base' encontrada!")
-}
-
-/** Extrai um backup passado e carrega-o na memória 
- assim como faz com o atual consultado.  */
-fn carrega_backup(caminho: &Path) -> Backup {
-   let base: PathBuf = match descompacta(caminho) {
-      Some(path_do_dir) => path_do_dir,
-      None => { 
-         println!(
-            "Tem certeza que este '{}' caminho é o certo?", 
-            caminho.display()
-         );
-         return Err("caminho inválido!"); 
-      }
-   };
-
-   // caminhos para os arquivos:
-   let mut ui_file = base.as_path().join(CAMINHO_UI);
-   let mut bd_file = base.as_path().join(CAMINHO_BD);
-   /* se não achou os arquivos no atual diretório, 
-    * fazer uma varredura e tentar encontrar onde
-    * estão localizados nos seus subdirs. */
-   if !ui_file.exists() || !bd_file.exists() { 
-      let mut complemento = primeira_base(&base).unwrap();
-      /* descartando último diretório, porque já 
-       * vem no CAMINHO_UI. */
-      drop(complemento.pop());
-      if !ui_file.exists()
-         { ui_file = complemento.join(CAMINHO_UI); }
-      if !bd_file.exists() 
-         { bd_file = complemento.join(CAMINHO_BD); }
-      assert!(ui_file.exists());
-      assert!(bd_file.exists());
-   }
-
-   // conteúdos em sí:
-   let file = File::open(ui_file).unwrap();
-   let ui = ultima_insercao_feita(file).unwrap(); 
-   let file = File::open(bd_file).unwrap();
-   let bd = carrega_bd_do_arquivo(file)?;
-
-   // deleta descompactação depois de utilizado.
-   remove_dir_all(base).unwrap();
-
-   return Ok((ui, bd));
-}
-
-// uso para testes:
-#[allow(unused_imports)]
-use super::deletador::DeletorPaciente;
 
 #[cfg(test)]
 mod tests {
-   // bibliotecas para teste.
-   use std::thread::sleep;
-   use std::time::Duration;
-   use super::*;
-   use std::fs::read_dir;
    extern crate utilitarios;
-   use utilitarios::{
-      arvore::arvore,
-      por_extenso::escreve_por_extenso
-   };
+
+   use super::*;
+   use std::{thread::sleep, time::Duration, fs::read_dir};
 
    /* função realiza cinco backups seguidos
     * de intervalos aleatórios. Como não há
@@ -300,112 +130,5 @@ mod tests {
       };
 
       assert_eq!(total, novo_total-5);
-   }
-
-   #[test]
-   fn testa_descompacta() {
-      let entradas = read_dir(TODOS_BACKUPS).unwrap(); 
-
-      let t = Duration::from_secs(20);
-      let mut xis = DeletorPaciente::novo(t);
-
-      for entrada in entradas {
-         let caminho = entrada.unwrap().path();
-         let caminho_zip = {
-            descompacta(caminho.as_path())
-            .unwrap()
-         };
-
-         // caminho do diretório descompactado:
-         xis += caminho_zip.clone();
-
-         println!("descompactado em {:#?}.", caminho_zip);
-         let caminho_str:&str = {
-            caminho_zip
-            .as_path()
-            .to_str()
-            .unwrap()
-         };
-         println!("{}\n", arvore(caminho_str, true));
-      }
-   }
-
-   // info do backup carregado.
-   fn info_backup(dados: (u32, BD)) {
-      let (ui, bd) = dados;
-      /* erro de incremento ao gravar. Conflito
-       * de dados antigos com novos. */
-      if let Some(conteudo) = bd.get(&dbg!(ui)) {
-         // primeiro e último primo encontrado.
-         let t = &conteudo.0.len();
-         let first_prime = &conteudo.0[0];
-         let last_prime = &conteudo.0[t - 1];
-         println!(
-            "\túltima inserção(total também): {}
-            \r\tprimeiro/e útlimo primos: {} e {}
-            \r\ttotal de primos: {}", 
-            ui, first_prime, last_prime, t
-         );
-      }
-   }
-
-   #[test]
-   fn teste_de_carrega_backup() {
-      let entradas = read_dir(TODOS_BACKUPS).unwrap();
-      let mut contador = 0;
-
-      for entrada in entradas {
-         let path = entrada.unwrap().path();
-         println!("\n{:#?}", path);
-         match carrega_backup(path.as_path()) {
-            Ok(tupla) => { info_backup(tupla);  }
-            Err(_) => {}
-         };
-         assert!(true);
-         contador += 1;
-      }
-
-      let textual = escreve_por_extenso(contador as u64);
-      println!("\n{} ao total carregados.", textual.unwrap());
-      // avaliação manual.
-      assert!(true);
-   }
-
-   #[test]
-   fn visualizacao_das_chaves() {
-      let entradas = read_dir(TODOS_BACKUPS).unwrap();
-      let t = Duration::from_secs(120);
-      let mut remocao_automatica = DeletorPaciente::novo(t);
-
-      for entrada in entradas {
-         let path = entrada.unwrap().path();
-         println!("\n{:#?}", path);
-         if let Ok((ui, _)) = carrega_backup(&path) {
-            println!("chave: {}", ui);
-         }
-         remocao_automatica += path;
-      }
-      // confirmação  manual.
-      assert!(true);
-   }
-
-
-   #[test]
-   fn acha_raiz_do_arquivos() {
-      let caminho_str = concat!(
-         "data/backups",
-         "/backup_bd_1678036202065.zip"
-      );
-      match descompacta(Path::new(caminho_str)) {
-         Some(caminho) => {
-            let pth = primeira_base(&caminho).unwrap();
-            println!("{:?}", pth);
-            println!("a excluir {:?}", caminho);
-            remove_dir_all(caminho).unwrap();
-         } None =>
-            { println!("não foi possível descompactar."); }
-      }
-      // confirmação  manual.
-      assert!(true);
    }
 }

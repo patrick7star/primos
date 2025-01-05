@@ -17,7 +17,7 @@ use std::io::{Write, Read};
 use super::{carrega_bd, DIR};
 
 // local do arquivo que será lido e atualizado.
-const REGISTROS_BD:&'static str = "ultima_insercao.dat";
+const REGISTROS_BD:&str = "ultima_insercao.dat";
 
 /* obtem o índice de inserção, que foi feito 
  * por último no BD. */

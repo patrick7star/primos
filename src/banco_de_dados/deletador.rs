@@ -1,14 +1,13 @@
-
 use std::process::Command;
 use std::time::Duration;
 use std::path::{PathBuf};
 use std::ops::{Drop, AddAssign};
 use std::thread::sleep;
+use std::fs::remove_dir_all;
 
-// caminho do executável.
-//const DIR: &'static str = "target/release/deps";
-const NOME_EXE: &'static str = "target/debug/primos";
-// tempo de delay da exclusão dos diretórios/arquivos.
+// Caminho do executável.
+const NOME_EXE: &str = "target/debug/primos";
+// Tempo de delay da exclusão dos diretórios/arquivos.
 const DELAY: f32 = 0.839;
 
 
@@ -17,6 +16,7 @@ pub struct DeletorPaciente {
    tempo_de_espera: Duration,
 }
 
+#[allow(dead_code)]
 impl DeletorPaciente {
    pub fn novo(tempo: Duration) -> Self {
       Self { 
@@ -61,9 +61,7 @@ impl AddAssign<PathBuf> for DeletorPaciente {
       { self.lista.push(caminho); }
 }
 
-         
-use std::fs::remove_dir_all;
-/* remove o arquivo demanda. */
+/* Remove o arquivo demanda. */
 pub fn deleta_caminho(caminho: PathBuf, tempo: Duration) {
    // pausa antes de começar.
    sleep(tempo);

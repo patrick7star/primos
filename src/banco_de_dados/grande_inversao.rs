@@ -1,21 +1,17 @@
-
-/*! Todos os valores que foram gravados
- com a ordem de byte "big endian", serão
- trocados pelo seu inverso, "little endian".
- E vice-versa caso troque de ideia, coloquei
- como "big endian" por uma simples escolha,
- mas quero trocar -- até o porquê é a verdadeira
- arquitetura da máquina.
+/*! Todos os valores que foram gravados com a ordem de byte "big endian", 
+  serão trocados pelo seu inverso, "little endian". E vice-versa caso 
+  troque de ideia, coloquei como "big endian" por uma simples escolha, mas 
+  quero trocar -- até o porquê é a verdadeira arquitetura da máquina.
  */
 
 use super::{
    ultima_insercao_feita as ler_uif, DIR, NOME_BD,
    ultima_insercao::atualiza_indice_de_insercao
 };
-use std::io::{self, Read, Write};
-use std::collections::VecDeque;
-use std::fs::OpenOptions;
-use std::path::Path;
+use std::{
+   io::{self, Read, Write}, collections::{VecDeque}, fs::OpenOptions,
+   path::Path
+};
 
 // específico para 4 bytes.
 type Quatro = [u8; 4];
@@ -40,10 +36,9 @@ fn inverte_array_fixa_64bits(bytes: Oito) -> Oito {
    return invertido;
 }
 
-/* troca o dado armazenado no arquivo
- * para a ordem específicada. Para que vai,
- * ou baseado no que está, fica à cargo
- * do programador. */
+/* Troca o dado armazenado no arquivo para a ordem específicada. Para que 
+ * vai, ou baseado no que está, fica à cargo do programador. */
+#[allow(clippy::needless_update, clippy::needless_late_init)]
 pub fn inverte_byte_order_de_todos_dados(ordem: ByteOrdem) {
    // se for a mesma que atual, não faz nada.
    match atual_byte_order() {
@@ -109,7 +104,7 @@ fn filtra_em_containers_de_8_bytes() -> io::Result<Fila> {
    return Ok(fila);
 }
 
-const ORDEM_DOS_BYTES: &'static str = "data/byte-order.dat";
+const ORDEM_DOS_BYTES: &str = "data/byte-order.dat";
 /* salva a atual "ordem de byte" imposta aos 
  * valores do banco de dados. Zero representa
  * 'BigEndian', já "duzentos e cinquenta e 
@@ -130,15 +125,14 @@ fn salva_byteorder(tipo: ByteOrdem) {
       ByteOrdem::LittleEndian =>
          { byte[0] = 255; }
    };
-   arquivo.write(&byte[..]).unwrap();
+   let _ = arquivo.write(&byte[..]).unwrap();
 }
 
-/* inverte, específicamente, o arquivo 
- * "banco de dados", o que guarda quase
+/* Inverte, específicamente, o arquivo "banco de dados", o que guarda quase
  * toda informação relevante. */
+#[allow(clippy::needless_late_init)]
 fn inverte_byteorder_do_bd() {
-   /* arquivo 'banco de dados', com todos
-    * dados gerados e coletados. */
+   /* Arquivo 'banco de dados', com todos dados gerados e coletados. */
    let mut nova_fila = Fila::with_capacity(1_500_000);
    let inverte: fn(Oito) -> Oito;
    inverte = inverte_array_fixa_64bits;
@@ -154,8 +148,7 @@ fn inverte_byteorder_do_bd() {
       }
    }
 
-   /* reinsere os containers de bytes, más
-    * agora invertidos, no * arquivo 
+   /* Reinsere os containers de bytes, más agora invertidos, no * arquivo 
     * novamente.. */
    let caminho = Path::new(DIR).join(NOME_BD);
    let mut arquivo = {
@@ -167,7 +160,7 @@ fn inverte_byteorder_do_bd() {
 
    while !nova_fila.is_empty() {
       let container = nova_fila.pop_front().unwrap();
-      arquivo.write(&container[..]).unwrap();
+      let _ = arquivo.write(&container[..]).unwrap();
    }
 }
 
@@ -182,7 +175,7 @@ fn atual_byte_order() -> ByteOrdem {
       .unwrap()
    };
    let mut conteudo: [u8; 1] = [255/3];
-   arquivo.read(&mut conteudo[..]).unwrap();
+   let _ = arquivo.read(&mut conteudo[..]).unwrap();
 
    if conteudo[0] == 0
       { ByteOrdem::BigEndian }
